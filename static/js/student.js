@@ -21,7 +21,7 @@ mainCanvas.height = draftCanvas.height = VIRTUAL_HEIGHT;
 
 let camScale = 1;
 let camX = 0, camY = 0;
-let currentBg = 'bg-blank';
+let currentBg = 'bg-grid';
 
 // --- Идеальное авто-масштабирование при входе ---
 function fitCanvasToScreen() {
@@ -98,8 +98,9 @@ socket.on('error', (data) => {
 socket.on('join_success', () => {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('workScreen').style.display = 'block';
-    document.body.classList.add('no-gestures'); // Блокируем свайпы только сейчас
+    document.body.classList.add('no-gestures');
     fitCanvasToScreen();
+    checkOrientation();
     if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(()=>{});
 });
 
@@ -304,11 +305,11 @@ function getExportImage(quality) {
     
     if (currentBg === 'bg-grid') {
         tCtx.strokeStyle = '#cbd5e0'; tCtx.lineWidth = 1;
-        for(let i=0; i<VIRTUAL_WIDTH; i+=40) { tCtx.beginPath(); tCtx.moveTo(i,0); tCtx.lineTo(i,VIRTUAL_HEIGHT); tCtx.stroke(); }
-        for(let i=0; i<VIRTUAL_HEIGHT; i+=40) { tCtx.beginPath(); tCtx.moveTo(0,i); tCtx.lineTo(VIRTUAL_WIDTH,i); tCtx.stroke(); }
+        for(let i=0; i<VIRTUAL_WIDTH; i+=80) { tCtx.beginPath(); tCtx.moveTo(i,0); tCtx.lineTo(i,VIRTUAL_HEIGHT); tCtx.stroke(); }
+        for(let i=0; i<VIRTUAL_HEIGHT; i+=80) { tCtx.beginPath(); tCtx.moveTo(0,i); tCtx.lineTo(VIRTUAL_WIDTH,i); tCtx.stroke(); }
     } else if (currentBg === 'bg-lines') {
         tCtx.strokeStyle = '#cbd5e0'; tCtx.lineWidth = 1;
-        for(let i=0; i<VIRTUAL_HEIGHT; i+=40) { tCtx.beginPath(); tCtx.moveTo(0,i); tCtx.lineTo(VIRTUAL_WIDTH,i); tCtx.stroke(); }
+        for(let i=0; i<VIRTUAL_HEIGHT; i+=80) { tCtx.beginPath(); tCtx.moveTo(0,i); tCtx.lineTo(VIRTUAL_WIDTH,i); tCtx.stroke(); }
     }
     
     // Сверху рисуем то, что нарисовал ученик
@@ -360,18 +361,24 @@ btnAnswer.onclick = () => {
 };
 
 
-// --- Проверка ориентации экрана ---
+// --- Проверка ориентации экрана (ТОЛЬКО НА ДОСКЕ) ---
 function checkOrientation() {
     const overlay = document.getElementById('orientationOverlay');
-    // Если устройство узкое, вертикальное и пользователь еще не нажал "Продолжить"
-    if (window.innerWidth <= 768 && window.innerHeight > window.innerWidth && !sessionStorage.getItem('orientationDismissed')) {
+    const workScreen = document.getElementById('workScreen');
+    
+    // Проверяем, что ученик уже вошел (workScreen открыт)
+    const isWorking = workScreen.style.display === 'block';
+    
+    // Простая и надежная проверка: если высота больше ширины - это вертикальный режим
+    const isPortrait = window.innerHeight > window.innerWidth;
+    
+    if (isWorking && isPortrait && !sessionStorage.getItem('orientationDismissed')) {
         overlay.style.display = 'flex';
     } else {
         overlay.style.display = 'none';
     }
 }
 window.addEventListener('resize', checkOrientation);
-document.addEventListener('DOMContentLoaded', checkOrientation);
 
 document.getElementById('btnDismissOrientation').onclick = () => {
     sessionStorage.setItem('orientationDismissed', 'true');
