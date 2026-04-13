@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Доска ученика</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <!-- Экран с просьбой повернуть устройство -->
+    <div class="orientation-overlay" id="orientationOverlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+        </svg>
+        <h3>Поверните устройство</h3>
+        <p>Для удобного рисования рекомендуем использовать горизонтальное положение</p>
+        <button class="btn btn-success" id="btnDismissOrientation" style="margin-top: 20px;">Продолжить так</button>
+    </div>
+
+    <div class="feedback-overlay" id="feedback"></div>
+    <div id="brushCursor"></div>
+
+    <!-- Экран входа -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <h2>Вход на урок</h2>
+            <input type="number" id="roomCode" placeholder="Код (4 цифры)" pattern="\d{4}">
+            <input type="text" id="studentName" placeholder="Фамилия и Имя">
+            <button class="btn btn-success" style="width: 100%; font-size: 18px; margin-top: 10px;" id="btnJoin">Войти</button>
+        </div>
+    </div>
+
+    <!-- Рабочий экран -->
+    <div id="workScreen" style="display: none;">
+        <div id="viewport">
+            <div id="canvasWrapper" class="bg-blank">
+                <canvas id="mainCanvas"></canvas>
+                <canvas id="draftCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="toolbar toolbar-left" id="ui-tools">
+            <button class="tool-btn active" data-tool="pen" title="Перо"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+            <button class="tool-btn" data-tool="line" title="Линия"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="4"></line><line x1="6" y1="16" x2="8" y2="18"></line><line x1="10" y1="12" x2="12" y2="14"></line><line x1="14" y1="8" x2="16" y2="10"></line></svg></button>
+            <button class="tool-btn" data-tool="eraser" title="Ластик"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20H20V20Z"></path></svg></button>
+            <button class="tool-btn" data-tool="hand" title="Перемещение"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v4M14 11V4a2 2 0 0 0-4 0v7M10 11V5a2 2 0 0 0-4 0v9a5 5 0 0 0 10 0v-3"></path></svg></button>
+            <hr>
+            <button class="tool-btn" id="btnUndo" title="Отмена"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+            <button class="tool-btn" id="btnClear" title="Очистить"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+        </div>
+
+        <div class="toolbar toolbar-bottom" id="ui-props">
+            <div class="color-btn active" style="background: #000;" data-color="#000000"></div>
+            <div class="color-btn" style="background: #e53e3e;" data-color="#e53e3e"></div>
+            <div class="color-btn" style="background: #3182ce;" data-color="#3182ce"></div>
+            <div class="color-btn" style="background: #38a169;" data-color="#38a169"></div>
+            <div class="divider"></div>
+            <div class="size-btn active" data-size="2"><div style="width: 4px; height: 4px;"></div></div>
+            <div class="size-btn" data-size="6"><div style="width: 8px; height: 8px;"></div></div>
+            <div class="size-btn" data-size="12"><div style="width: 14px; height: 14px;"></div></div>
+        </div>
+
+        <div class="toolbar toolbar-top-right" id="ui-bg">
+            <button class="tool-btn active" data-bg="bg-blank" title="Пусто"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button>
+            <button class="tool-btn" data-bg="bg-grid" title="Клетка"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button>
+            <button class="tool-btn" data-bg="bg-lines" title="Линейка"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9h18M3 15h18" stroke-linecap="round"/><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg></button>
+            <div class="divider"></div>
+            <button class="tool-btn" id="btnZoomOut" title="Отдалить"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button>
+            <button class="tool-btn" id="btnZoomIn" title="Приблизить"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button>
+        </div>
+
+        <button class="action-btn" id="btnAnswer">Ответить</button>
+    </div>
+
+    <script src="/static/js/student.js"></script>
+</body>
+</html>

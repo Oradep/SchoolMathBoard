@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель учителя</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h2>Комната: <b id="roomCodeDisplay" style="color:var(--primary); font-size:28px;">...</b></h2>
+        <button class="btn btn-success" id="btnNext" style="display:none; font-size:18px;">Следующее задание</button>
+    </div>
+    <div class="grid" id="studentsGrid"></div>
+    <div class="modal" id="boardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;" onclick="this.style.display='none'">
+        <img id="fullBoardImg" src="" style="max-width:95%; max-height:95%; background:white; border-radius:10px;">
+    </div>
+    <script src="/static/js/teacher.js"></script>
+</body>
+</html>

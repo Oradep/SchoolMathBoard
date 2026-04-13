@@ -1,0 +1,103 @@
+:root {
+    --primary: #4299e1; --danger: #f56565; --success: #48bb78; --ui-bg: rgba(255, 255, 255, 0.98);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; }
+
+/* Убираем глобальную блокировку, чтобы работали инпуты */
+body { background: #e2e8f0; overflow: hidden; }
+
+/* Блокируем жесты ТОЛЬКО когда открыт холст */
+.no-gestures { touch-action: none; overscroll-behavior: none; }
+
+#viewport { width: 100vw; height: 100vh; position: absolute; top:0; left:0; background: #cbd5e0; overflow: hidden; cursor: crosshair;}
+#canvasWrapper { position: absolute; transform-origin: 0 0; box-shadow: 0 0 20px rgba(0,0,0,0.15); background-color: #fff;}
+canvas { position: absolute; top: 0; left: 0; }
+#mainCanvas { z-index: 1; }
+#draftCanvas { z-index: 2; pointer-events: none; }
+
+/* Кастомный курсор */
+#brushCursor { position: fixed; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); border: 1px solid rgba(0,0,0,0.4); display: none; background: transparent; transition: width 0.1s, height 0.1s; }
+
+/* Фоны (Клетка, Линейка) - Теперь через SVG Base64 для идеального масштабирования на ПК */
+.bg-blank { background-color: #fff; }
+.bg-grid { background-color: #fff; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M40 0L0 0 0 40" fill="none" stroke="%23cbd5e0" stroke-width="1.5"/></svg>'); }
+.bg-lines { background-color: #fff; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><path d="M40 40L0 40" fill="none" stroke="%23cbd5e0" stroke-width="1.5"/></svg>'); }
+
+/* UI Панели - Ровные и аккуратные */
+.toolbar { position: absolute; background: var(--ui-bg); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; gap: 4px; padding: 6px; z-index: 1000; border: 1px solid #e2e8f0;}
+.toolbar-left { top: 50%; left: 15px; transform: translateY(-50%); flex-direction: column; }
+.toolbar-bottom { bottom: 15px; left: 50%; transform: translateX(-50%); flex-direction: row; align-items: center;}
+.toolbar-top-right { top: 15px; right: 15px; flex-direction: row; }
+hr { border: 0; border-top: 1px solid #e2e8f0; width: 100%; margin: 4px 0; }
+.divider { width: 1px; height: 24px; background: #e2e8f0; margin: 0 4px; }
+
+.tool-btn { background: none; border: 2px solid transparent; border-radius: 8px; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; color: #4a5568;}
+.tool-btn:active { transform: scale(0.9); }
+.tool-btn:hover { background: #f7fafc; }
+.tool-btn.active { background: #ebf8ff; border-color: var(--primary); color: var(--primary); }
+
+.color-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 2px #cbd5e0; cursor: pointer; transition: 0.2s; margin: 0 2px;}
+.color-btn.active { box-shadow: 0 0 0 3px var(--primary); transform: scale(1.15); }
+.size-btn { width: 32px; height: 32px; border-radius: 50%; background: #edf2f7; display: flex; align-items: center; justify-content: center; cursor: pointer; margin: 0 2px;}
+.size-btn div { background: #2d3748; border-radius: 50%; }
+.size-btn.active { border: 2px solid var(--primary); background: #ebf8ff;}
+
+.action-btn { position: absolute; bottom: 20px; right: 20px; font-size: 18px; padding: 14px 30px; border-radius: 12px; border: none; font-weight: 600; color: white; background: var(--success); cursor: pointer; box-shadow: 0 6px 15px rgba(0,0,0,0.15); z-index: 1000; transition: 0.3s; }
+.action-btn:active { transform: scale(0.95); }
+
+/* Градиенты */
+.feedback-overlay { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events: none; opacity: 0; z-index: 900; transition: opacity 1s ease, box-shadow 1s ease; }
+.feedback-red { opacity: 1; box-shadow: inset 0 0 150px 50px rgba(245, 101, 101, 0.4); }
+.feedback-green { opacity: 1; box-shadow: inset 0 0 150px 50px rgba(72, 187, 120, 0.4); }
+.feedback-locked { opacity: 1; box-shadow: inset 0 0 150px 50px rgba(66, 153, 225, 0.25); background: rgba(255,255,255,0.05); }
+
+/* Вход */
+.login-container { display: flex; height: 100vh; align-items: center; justify-content: center; background: #f7fafc; z-index: 2000; position: relative;}
+.login-box { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; max-width: 400px; width: 90%;}
+.login-box input { display: block; width: 100%; margin: 15px 0; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e0; font-size: 18px; outline: none; transition: 0.2s;}
+.login-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);}
+
+/* Учитель */
+.dashboard-header { padding: 15px 25px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center;}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; padding: 20px; }
+.student-card { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: relative; transition: all 0.3s ease; border: 4px solid transparent;}
+.student-card.ready { border-color: var(--success); transform: translateY(-5px); box-shadow: 0 10px 20px rgba(72,187,120,0.2); order: -1; }
+.student-card img { width: 100%; height: 170px; object-fit: contain; background: #fff; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0; }
+.card-actions { position: absolute; top: 15px; right: 15px; display: none; gap: 5px; }
+.student-card:hover .card-actions { display: flex; }
+.btn { padding: 12px 20px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s;}
+.btn:active { transform: scale(0.95); }
+.btn-danger { background: var(--danger); color: white;}
+.btn-success { background: var(--success); color: white;}
+
+
+/* Экран предупреждения об ориентации */
+.orientation-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(45, 55, 72, 0.95); color: white; z-index: 10000;
+    flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px;
+}
+.orientation-overlay svg { width: 64px; height: 64px; margin-bottom: 20px; animation: rotatePhone 2s infinite ease-in-out; }
+@keyframes rotatePhone { 0% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } 100% { transform: rotate(-90deg); } }
+
+/* --- МОБИЛЬНАЯ АДАПТАЦИЯ (ВЕРТИКАЛЬНЫЙ РЕЖИМ) --- */
+@media screen and (max-width: 768px) and (orientation: portrait) {
+    /* Перемещаем кнопку "Ответить" наверх по центру, чтобы не перекрывала цвета */
+    .action-btn { 
+        top: 15px; 
+        bottom: auto; 
+        right: 50%; 
+        transform: translateX(50%); 
+        padding: 10px 24px; 
+        font-size: 16px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    .action-btn:active { transform: translateX(50%) scale(0.95); }
+    
+    /* Сдвигаем правую панель ниже, чтобы она не налезла на кнопку */
+    .toolbar-top-right { top: 75px; right: 10px; }
+    
+    /* Делаем панель инструментов слева чуть компактнее */
+    .toolbar-left { left: 10px; padding: 4px; }
+    .tool-btn { width: 38px; height: 38px; }
+}
