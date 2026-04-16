@@ -17,7 +17,6 @@ def generate_room_code():
             return code
 
 def auto_delete_room(room_code):
-    """Автоматически удаляет комнату, если учитель долго не возвращался"""
     if room_code in rooms:
         socketio.emit('room_closed', to=room_code)
         del rooms[room_code]
@@ -50,12 +49,10 @@ def handle_rejoin_teacher(data):
         room['teacher_sid'] = request.sid
         join_room(room_code)
         
-        # Отменяем таймер авто-удаления, так как учитель вернулся
         if room['timer']:
             room['timer'].cancel()
             room['timer'] = None
 
-        # Формируем список текущих учеников для восстановления интерфейса учителя
         students_data = []
         for name, student in room['students'].items():
             students_data.append({
@@ -112,6 +109,17 @@ def handle_draw_update(data):
         else:
             emit('board_updated', {'name': name, 'board_data': data['board_data']}, to=rooms[room_code]['teacher_sid'])
 
+@socketio.on('teacher_correction')
+def handle_teacher_correction(data):
+    room_code = data['room_code']
+    name = data['name']
+    if room_code in rooms and name in rooms[room_code]['students']:
+        rooms[room_code]['students'][name]['board_data'] = data['board_data']
+        # Отправляем ученику
+        emit('force_update_board', {'board_data': data['board_data']}, to=rooms[room_code]['students'][name]['sid'])
+        # Обновляем превью у учителя
+        emit('board_updated', {'name': name, 'board_data': data['board_data']}, to=rooms[room_code]['teacher_sid'])
+
 @socketio.on('cancel_answer')
 def handle_cancel_answer(data):
     room_code = data['room_code']
@@ -136,6 +144,13 @@ def handle_next_task(data):
             student['ready'] = False
         emit('task_next', to=room_code)
 
+@socketio.on('toggle_freeze')
+def handle_toggle_freeze(data):
+    room_code = data['room_code']
+    is_frozen = data['is_frozen']
+    if room_code in rooms:
+        emit('freeze_board', {'is_frozen': is_frozen}, to=room_code)
+
 @socketio.on('kick_student')
 def handle_kick(data):
     room_code = data['room_code']
@@ -146,10 +161,8 @@ def handle_kick(data):
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    # Проверяем, не отключился ли учитель
     for room_code, room in list(rooms.items()):
         if room['teacher_sid'] == request.sid:
-            # Запускаем таймер на 5 минут (300 секунд)
             timer = Timer(300.0, auto_delete_room, args=[room_code])
             timer.start()
             room['timer'] = timer

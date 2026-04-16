@@ -4,21 +4,74 @@
 <head>
     <meta charset="UTF-8">
     <title>Панель учителя</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=7">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <div class="dashboard-header">
         <div style="display: flex; align-items: center; gap: 20px;">
             <h2>Комната: <b id="roomCodeDisplay" style="color:var(--primary); font-size:28px;">...</b></h2>
-            <button class="btn btn-danger" id="btnEndLesson" style="display:none; padding: 8px 16px; font-size: 14px;">Завершить урок</button>
+            <div id="headerActions" class="dashboard-actions" style="display:none;">
+                <button class="btn btn-outline" id="btnExportPDF" title="Скачать доски учеников">📥 Скачать PDF</button>
+                <button class="btn btn-danger" id="btnEndLesson">🛑 Завершить урок</button>
+            </div>
         </div>
-        <button class="btn btn-success" id="btnNext" style="display:none; font-size:18px;">Следующее задание</button>
+        <div class="dashboard-actions">
+            <button class="btn btn-outline" id="btnFreeze" style="font-size:16px;">❄️ Заморозить</button>
+            <button class="btn btn-success" id="btnNext" style="font-size:16px;">➡️ Следующее задание</button>
+        </div>
     </div>
+    
     <div class="grid" id="studentsGrid"></div>
-    <div class="modal" id="boardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;" onclick="this.style.display='none'">
-        <img id="fullBoardImg" src="" style="max-width:95%; max-height:95%; background:white; border-radius:10px;">
+    
+    <!-- Модальное окно учителя с ПОЛНОЦЕННОЙ ДОСКОЙ -->
+    <div class="modal" id="boardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:2000; justify-content:center; align-items:center;" onclick="closeModal(event)">
+        
+        <!-- Кнопка Выхода -->
+        <button class="btn btn-danger" style="position: absolute; top: 15px; left: 15px; z-index: 2002; box-shadow: 0 4px 10px rgba(0,0,0,0.3);" onclick="closeModal(event, true)">⬅ Выйти</button>
+
+        <!-- Подсказка -->
+        <div style="position: absolute; top: 15px; color: white; background: rgba(0,0,0,0.5); padding: 8px 20px; border-radius: 20px; pointer-events: none; z-index:2001; font-size: 14px;">
+            ✍️ Исправления отправляются ученику автоматически.
+        </div>
+
+        <div class="modal-board-container" id="tViewport">
+            <!-- Инструменты учителя -->
+            <div id="teacherUI">
+                <div class="toolbar toolbar-left">
+                    <button class="tool-btn active" data-tool="pen" title="Перо"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                    <button class="tool-btn" data-tool="line" title="Линия"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="4"></line><line x1="6" y1="16" x2="8" y2="18"></line><line x1="10" y1="12" x2="12" y2="14"></line><line x1="14" y1="8" x2="16" y2="10"></line></svg></button>
+                    <button class="tool-btn" data-tool="eraser" title="Ластик"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20H20V20Z"></path></svg></button>
+                    <button class="tool-btn" data-tool="hand" title="Перемещение"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v4M14 11V4a2 2 0 0 0-4 0v7M10 11V5a2 2 0 0 0-4 0v9a5 5 0 0 0 10 0v-3"></path></svg></button>
+                    <hr>
+                    <button class="tool-btn btn-undo" title="Отмена"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                </div>
+                <div class="toolbar toolbar-bottom">
+                    <div class="color-btn" style="background: #000;" data-color="#000000"></div>
+                    <div class="color-btn active" style="background: #e53e3e;" data-color="#e53e3e"></div> <!-- Красный по умолчанию для учителя -->
+                    <div class="color-btn" style="background: #3182ce;" data-color="#3182ce"></div>
+                    <div class="color-btn" style="background: #38a169;" data-color="#38a169"></div>
+                    <div class="divider"></div>
+                    <div class="size-btn active" data-size="4"><div style="width: 6px; height: 6px;"></div></div>
+                    <div class="size-btn" data-size="8"><div style="width: 10px; height: 10px;"></div></div>
+                </div>
+                <div class="toolbar toolbar-top-right">
+                    <button class="tool-btn btn-zoom-out" title="Отдалить"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button>
+                    <button class="tool-btn btn-zoom-in" title="Приблизить"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg></button>
+                </div>
+            </div>
+            
+            <div id="tWrapper" class="bg-grid">
+                <canvas id="tMainCanvas"></canvas>
+                <canvas id="tDraftCanvas"></canvas>
+            </div>
+            <div id="tCursor" style="position:fixed; border-radius:50%; pointer-events:none; border:1px solid rgba(0,0,0,0.4); z-index:9999; display:none;"></div>
+        </div>
     </div>
-    <script src="/static/js/teacher.js"></script>
+
+    <script src="/static/js/board.js?v=7"></script>
+    <script src="/static/js/teacher.js?v=7"></script>
 </body>
 </html>
