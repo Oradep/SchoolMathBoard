@@ -1,14 +1,55 @@
+// --- START OF FILE teacher.js ---
 const socket = io();
 let roomCode = '';
 
-socket.on('connect', () => { socket.emit('create_room'); });
-socket.on('room_created', (data) => {
-    roomCode = data.room_code;
-    document.getElementById('roomCodeDisplay').innerText = roomCode;
-    document.getElementById('btnNext').style.display = 'block';
+socket.on('connect', () => { 
+    const savedRoom = localStorage.getItem('mathTeacherRoom');
+    if (savedRoom) {
+        socket.emit('rejoin_teacher', { room_code: savedRoom });
+    } else {
+        socket.emit('create_room'); 
+    }
 });
 
-socket.on('update_student', (data) => {
+socket.on('room_created', (data) => {
+    roomCode = data.room_code;
+    localStorage.setItem('mathTeacherRoom', roomCode);
+    setupTeacherUI();
+});
+
+socket.on('teacher_rejoined', (data) => {
+    roomCode = data.room_code;
+    setupTeacherUI();
+    
+    // Восстанавливаем карточки учеников
+    document.getElementById('studentsGrid').innerHTML = '';
+    data.students.forEach(student => {
+        renderStudentCard(student);
+    });
+});
+
+socket.on('error', (data) => {
+    if (data.action === 'recreate') {
+        localStorage.removeItem('mathTeacherRoom');
+        socket.emit('create_room');
+    }
+});
+
+function setupTeacherUI() {
+    document.getElementById('roomCodeDisplay').innerText = roomCode;
+    document.getElementById('btnNext').style.display = 'block';
+    document.getElementById('btnEndLesson').style.display = 'block';
+}
+
+document.getElementById('btnEndLesson').onclick = () => {
+    if (confirm("Вы уверены, что хотите завершить урок? Все доски учеников будут стерты, а комната удалена.")) {
+        socket.emit('delete_room', { room_code: roomCode });
+        localStorage.removeItem('mathTeacherRoom');
+        location.href = '/';
+    }
+};
+
+function renderStudentCard(data) {
     let grid = document.getElementById('studentsGrid');
     let cardId = `student-${data.name.replace(/\s+/g, '-')}`;
     let card = document.getElementById(cardId);
@@ -36,6 +77,10 @@ socket.on('update_student', (data) => {
     
     if (data.ready) card.classList.add('ready');
     else card.classList.remove('ready');
+}
+
+socket.on('update_student', (data) => {
+    renderStudentCard(data);
 });
 
 socket.on('board_updated', (data) => {

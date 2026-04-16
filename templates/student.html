@@ -1,11 +1,11 @@
+<!-- --- START OF FILE student.html --- -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Добавлен viewport-fit=cover для работы с "челками" iPhone и Android -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Доска ученика</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=4">
+    <link rel="stylesheet" href="/static/css/style.css?v=5">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 <body>
@@ -22,7 +22,6 @@
     <div class="feedback-overlay" id="feedback"></div>
     <div id="brushCursor"></div>
 
-    <!-- Экран входа -->
     <div id="loginScreen" class="login-container">
         <div class="login-box">
             <h2>Вход на урок</h2>
@@ -30,11 +29,9 @@
             <input type="text" id="studentName" placeholder="Фамилия и Имя">
             <button class="btn btn-success" style="width: 100%; font-size: 18px; margin-top: 10px;" id="btnJoin">Войти</button>
         </div>
-        <!-- ПАСХАЛКА: Очень бледный текст в самом низу экрана входа -->
         <div class="easter-egg">Разработано oradep специально для лучшего учителя математики Дронова Андрея Александровича</div>
     </div>
 
-    <!-- Рабочий экран -->
     <div id="workScreen" style="display: none;">
         <div id="viewport">
             <div id="canvasWrapper" class="bg-grid">
@@ -76,6 +73,6 @@
         <button class="action-btn" id="btnAnswer">Ответить</button>
     </div>
 
-    <script src="/static/js/student.js?v=4"></script>
+    <script src="/static/js/student.js?v=5"></script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+<!-- --- START OF FILE teacher.html --- -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -8,7 +9,10 @@
 </head>
 <body>
     <div class="dashboard-header">
-        <h2>Комната: <b id="roomCodeDisplay" style="color:var(--primary); font-size:28px;">...</b></h2>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h2>Комната: <b id="roomCodeDisplay" style="color:var(--primary); font-size:28px;">...</b></h2>
+            <button class="btn btn-danger" id="btnEndLesson" style="display:none; padding: 8px 16px; font-size: 14px;">Завершить урок</button>
+        </div>
         <button class="btn btn-success" id="btnNext" style="display:none; font-size:18px;">Следующее задание</button>
     </div>
     <div class="grid" id="studentsGrid"></div>

@@ -1,6 +1,7 @@
 # --- START OF FILE app.py ---
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit, join_room, leave_room
+from threading import Timer
 import random
 
 app = Flask(__name__)
@@ -14,6 +15,13 @@ def generate_room_code():
         code = str(random.randint(1000, 9999))
         if code not in rooms:
             return code
+
+def auto_delete_room(room_code):
+    """Автоматически удаляет комнату, если учитель долго не возвращался"""
+    if room_code in rooms:
+        socketio.emit('room_closed', to=room_code)
+        del rooms[room_code]
+        print(f"Room {room_code} auto-deleted due to teacher inactivity.")
 
 @app.route('/')
 def index():
@@ -30,9 +38,43 @@ def student_view():
 @socketio.on('create_room')
 def handle_create_room():
     room_code = generate_room_code()
-    rooms[room_code] = {'teacher_sid': request.sid, 'students': {}}
+    rooms[room_code] = {'teacher_sid': request.sid, 'students': {}, 'timer': None}
     join_room(room_code)
     emit('room_created', {'room_code': room_code})
+
+@socketio.on('rejoin_teacher')
+def handle_rejoin_teacher(data):
+    room_code = data.get('room_code')
+    if room_code in rooms:
+        room = rooms[room_code]
+        room['teacher_sid'] = request.sid
+        join_room(room_code)
+        
+        # Отменяем таймер авто-удаления, так как учитель вернулся
+        if room['timer']:
+            room['timer'].cancel()
+            room['timer'] = None
+
+        # Формируем список текущих учеников для восстановления интерфейса учителя
+        students_data = []
+        for name, student in room['students'].items():
+            students_data.append({
+                'name': name,
+                'board_data': student['board_data'],
+                'ready': student['ready']
+            })
+        emit('teacher_rejoined', {'room_code': room_code, 'students': students_data})
+    else:
+        emit('error', {'msg': 'Комната не найдена или была удалена', 'action': 'recreate'})
+
+@socketio.on('delete_room')
+def handle_delete_room(data):
+    room_code = data.get('room_code')
+    if room_code in rooms and rooms[room_code]['teacher_sid'] == request.sid:
+        if rooms[room_code]['timer']:
+            rooms[room_code]['timer'].cancel()
+        emit('room_closed', to=room_code)
+        del rooms[room_code]
 
 @socketio.on('join_student')
 def handle_join_student(data):
@@ -101,6 +143,17 @@ def handle_kick(data):
     if room_code in rooms and name in rooms[room_code]['students']:
         emit('kicked', to=rooms[room_code]['students'][name]['sid'])
         del rooms[room_code]['students'][name]
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    # Проверяем, не отключился ли учитель
+    for room_code, room in list(rooms.items()):
+        if room['teacher_sid'] == request.sid:
+            # Запускаем таймер на 5 минут (300 секунд)
+            timer = Timer(300.0, auto_delete_room, args=[room_code])
+            timer.start()
+            room['timer'] = timer
+            break
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=80, debug=True)
